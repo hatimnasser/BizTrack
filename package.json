@@ -1,0 +1,19 @@
+{
+  "name": "biztrack-pro",
+  "version": "3.1.0",
+  "description": "BizTrack Pro — Capacitor Android App with SQLite persistence",
+  "scripts": {
+    "sync":    "npx cap sync android",
+    "open":    "npx cap open android",
+    "copy":    "npx cap copy android",
+    "install": "npm install && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android":           "^6.1.2",
+    "@capacitor/core":              "^6.1.2",
+    "@capacitor-community/sqlite":  "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}
