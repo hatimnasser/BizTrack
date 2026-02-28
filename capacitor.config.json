@@ -1,0 +1,18 @@
+{
+  "appId":   "com.biztrack.pro",
+  "appName": "BizTrack Pro",
+  "webDir":  "www",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "androidIsEncryption":   false,
+      "androidBiometric": {
+        "biometricAuth": false
+      }
+    }
+  }
+}
