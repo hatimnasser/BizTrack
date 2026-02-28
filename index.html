@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B3A4B">
+<title>BizTrack Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══ LOADING SCREEN (shown while SQLite initialises) ══════ -->
+<div id="loading-screen">
+  <div class="loading-logo">🏪</div>
+  <div class="loading-title">Biz<span>Track</span> Pro</div>
+  <div class="loading-spinner"></div>
+  <div class="loading-sub" id="loading-status">Opening database…</div>
+</div>
+
+<!-- ═══ ONBOARDING SCREEN ═══════════════════════════════════ -->
+<div id="onboard" class="gone">
+  <div class="ob-logo">🏪</div>
+  <h1 class="ob-title">Biz<span>Track</span> Pro</h1>
+  <p class="ob-sub">Your complete small business manager. Works offline. Data stays on your device.</p>
+  <div class="ob-form">
+    <input class="ob-input" id="ob-biz" placeholder="Business name e.g. Kamara Hardware" autocomplete="off" />
+    <input class="ob-input" id="ob-owner" placeholder="Your name" autocomplete="off" />
+    <select class="ob-input" id="ob-type" style="color:rgba(255,255,255,.7)">
+      <option value="" disabled selected>Business type...</option>
+      <option>Grocery / Supermarket</option>
+      <option>Hardware Store</option>
+      <option>Salon / Barbershop</option>
+      <option>Restaurant / Café</option>
+      <option>Clothing / Apparel</option>
+      <option>Pharmacy</option>
+      <option>General Shop</option>
+      <option>Other</option>
+    </select>
+    <select class="ob-input" id="ob-currency" style="color:rgba(255,255,255,.7)">
+      <option value="UGX">UGX — Ugandan Shilling</option>
+      <option value="KES">KES — Kenyan Shilling</option>
+      <option value="TZS">TZS — Tanzanian Shilling</option>
+      <option value="RWF">RWF — Rwandan Franc</option>
+      <option value="NGN">NGN — Nigerian Naira</option>
+      <option value="GHS">GHS — Ghanaian Cedi</option>
+      <option value="USD">USD — US Dollar</option>
+      <option value="EUR">EUR — Euro</option>
+    </select>
+    <button class="ob-btn" onclick="finishOnboarding()">Get Started →</button>
+    <p class="ob-privacy">📱 All data is stored on your device only.<br>Nothing is sent to any server.</p>
+  </div>
+</div>
+
+<!-- ═══ MAIN APP ════════════════════════════════════════════ -->
+<div id="app">
+  <!-- HEADER (mobile) -->
+  <div id="header">
+    <div id="header-title">🏪 <span id="h-bizname">BizTrack</span></div>
+    <div id="header-actions">
+      <button class="hbtn" onclick="showPage('settings')" title="Settings">⚙️</button>
+      <button class="hbtn" onclick="openBackup()" title="Backup">☁️</button>
+    </div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div id="content">
+
+    <!-- ─── DASHBOARD ──────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="section-title">Today's Overview</div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Revenue</div>
+          <div class="kpi-val" id="kpi-rev">—</div>
+          <div class="kpi-sub">all time</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Collected</div>
+          <div class="kpi-val" id="kpi-coll">—</div>
+          <div class="kpi-sub">amount received</div>
+        </div>
+        <div class="kpi-card accent">
+          <div class="kpi-label">Outstanding</div>
+          <div class="kpi-val" id="kpi-owed">—</div>
+          <div class="kpi-sub">owed to you</div>
+        </div>
+        <div class="kpi-card warn">
+          <div class="kpi-label">Expenses</div>
+          <div class="kpi-val" id="kpi-exp">—</div>
+          <div class="kpi-sub">total costs</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Net Profit</div>
+          <div class="kpi-val" id="kpi-profit">—</div>
+          <div class="kpi-sub">revenue − expenses</div>
+        </div>
+        <div class="kpi-card muted">
+          <div class="kpi-label">Sales Count</div>
+          <div class="kpi-val" id="kpi-cnt">—</div>
+          <div class="kpi-sub">transactions</div>
+        </div>
+      </div>
+
+      <div class="section-title">Recent Sales</div>
+      <div class="card" id="recent-sales-card">
+        <div id="recent-sales-list">
+          <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No sales yet</div><div class="empty-sub">Tap + to record your first sale</div></div>
+        </div>
+      </div>
+
+      <div class="section-title">⚠️ Alerts</div>
+      <div id="alerts-area">
+        <div class="alert alert-success">✅ No outstanding alerts</div>
+      </div>
+
+      <div class="section-title">Low Stock</div>
+      <div class="card" id="low-stock-card">
+        <div id="low-stock-list">
+          <div class="empty" style="padding:20px"><div class="empty-text">✅ All stock levels OK</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SALES ──────────────────────── -->
+    <div class="page" id="page-sales">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" placeholder="Search sales, customer, product…" id="sales-search" oninput="renderSales()">
+      </div>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="filterSales('all',this)">All</button>
+        <button class="tab-btn" onclick="filterSales('unpaid',this)">Unpaid</button>
+        <button class="tab-btn" onclick="filterSales('overdue',this)">Overdue</button>
+        <button class="tab-btn" onclick="filterSales('paid',this)">Paid</button>
+      </div>
+      <div id="sales-list"></div>
+    </div>
+
+    <!-- ─── INVENTORY ─────────────────── -->
+    <div class="page" id="page-inventory">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" placeholder="Search products…" id="inv-search" oninput="renderInventory()">
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modal-restock')" style="margin-bottom:14px">
+        <span>➕</span> Add / Restock Product
+      </button>
+      <div id="inv-list"></div>
+    </div>
+
+    <!-- ─── EXPENSES ──────────────────── -->
+    <div class="page" id="page-expenses">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="showExpTab('list',this)">History</button>
+        <button class="tab-btn" onclick="showExpTab('suppliers',this)">Suppliers</button>
+      </div>
+      <div class="tab-panel active" id="exp-tab-list">
+        <button class="btn btn-primary" onclick="openModal('modal-expense')" style="margin-bottom:14px">
+          <span>➕</span> Record Expense
+        </button>
+        <div id="exp-list"></div>
+      </div>
+      <div class="tab-panel" id="exp-tab-suppliers">
+        <button class="btn btn-primary" onclick="openModal('modal-supplier')" style="margin-bottom:14px">
+          <span>➕</span> Add Supplier
+        </button>
+        <div id="sup-list"></div>
+      </div>
+    </div>
+
+    <!-- ─── REPORTS ───────────────────── -->
+    <div class="page" id="page-reports">
+      <div class="section-title">Date Range</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">From</label>
+            <input type="date" class="form-control" id="rpt-from">
+          </div>
+          <div class="form-group">
+            <label class="form-label">To</label>
+            <input type="date" class="form-control" id="rpt-to">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-ghost btn-sm" onclick="rptRange('today')">Today</button>
+          <button class="btn btn-ghost btn-sm" onclick="rptRange('week')">This Week</button>
+          <button class="btn btn-ghost btn-sm" onclick="rptRange('month')">This Month</button>
+          <button class="btn btn-ghost btn-sm" onclick="rptRange('year')">This Year</button>
+        </div>
+        <button class="btn btn-primary" onclick="buildReport()"><span>📊</span> Generate Report</button>
+      </div>
+      <div id="report-output"></div>
+    </div>
+
+    <!-- ─── SETTINGS ──────────────────── -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Business Details</div></div>
+        <div class="form-group"><label class="form-label">Business Name</label><input type="text" class="form-control" id="s-bizname"></div>
+        <div class="form-group"><label class="form-label">Owner Name</label><input type="text" class="form-control" id="s-owner"></div>
+        <div class="form-group"><label class="form-label">Business Type</label>
+          <select class="form-control" id="s-type">
+            <option>Grocery / Supermarket</option><option>Hardware Store</option>
+            <option>Salon / Barbershop</option><option>Restaurant / Café</option>
+            <option>Clothing / Apparel</option><option>Pharmacy</option>
+            <option>General Shop</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Currency</label>
+          <select class="form-control" id="s-currency">
+            <option>UGX</option><option>KES</option><option>TZS</option>
+            <option>RWF</option><option>NGN</option><option>GHS</option>
+            <option>USD</option><option>EUR</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Payment Terms (days)</label><input type="number" class="form-control" id="s-terms" value="30"></div>
+        <div class="form-group"><label class="form-label">Low Stock Alert Level</label><input type="number" class="form-control" id="s-lowstock" value="5"></div>
+        <div class="form-group"><label class="form-label">Tax Rate (%)</label><input type="number" class="form-control" id="s-tax" value="0"></div>
+        <div class="form-group"><label class="form-label">Invoice Footer Note</label><input type="text" class="form-control" id="s-footer" value="Thank you for your business!"></div>
+        <button class="btn btn-primary mt-8" onclick="saveSettings()">💾 Save Settings</button>
+      </div>
+
+      <div class="section-title">Data &amp; Backup</div>
+      <div class="card">
+        <div class="setting-row">
+          <div><div class="setting-label">Export data (JSON backup)</div><div class="setting-val">Download all data as a file</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="exportJSON()">Export</button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Import data (JSON backup)</div><div class="setting-val">Restore from a backup file</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file').click()">Import</button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Backup / Restore</div><div class="setting-val">Cloud backup options</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="openBackup()">Backup</button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" style="color:var(--danger)">Clear all data</div><div class="setting-val">Permanently delete everything</div></div>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear</button>
+        </div>
+      </div>
+
+      <div class="section-title">About</div>
+      <div class="card">
+        <div class="text-muted" style="font-size:13px;line-height:1.7">
+          <strong>BizTrack Pro v3.1 — Capacitor Edition</strong><br>
+          Data is stored permanently in an on-device SQLite database.<br><br>
+          📌 <strong>Data is safe:</strong> SQLite persists across app updates and reboots. Use JSON Export for off-device backups.<br><br>
+          📌 <strong>UTF-8 compliant:</strong> All text (including special characters) is stored and displayed correctly.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <nav id="nav">
+    <div id="nav-logo" style="display:none">🏪 Biz<span>Track</span></div>
+    <div id="nav-inner" style="display:contents">
+      <button class="nav-btn active" onclick="showPage('dashboard')"><span class="icon">📊</span><span>Dashboard</span><span class="nav-dot"></span></button>
+      <button class="nav-btn" onclick="showPage('sales')"><span class="icon">🧾</span><span>Sales</span><span class="nav-dot"></span></button>
+      <div class="nav-fab"><button class="nav-fab-btn" onclick="openModal('modal-sale')">＋</button></div>
+      <button class="nav-btn" onclick="showPage('inventory')"><span class="icon">📦</span><span>Inventory</span><span class="nav-dot"></span></button>
+      <button class="nav-btn" onclick="showPage('expenses')"><span class="icon">💸</span><span>Expenses</span><span class="nav-dot"></span></button>
+    </div>
+    <div id="nav-bottom" style="display:none">
+      <button class="btn btn-ghost btn-block" onclick="showPage('reports')">📊 Reports</button>
+      <button class="btn btn-ghost btn-block mt-8" onclick="showPage('settings')">⚙️ Settings</button>
+    </div>
+  </nav>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+<input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+
+<!-- ═══ MODALS ══════════════════════════════════════════════ -->
+<div id="modal-overlay" onclick="overlayClick(event)">
+
+  <!-- ─── NEW SALE MODAL ─────────────────── -->
+  <div class="modal" id="modal-sale">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📦 New Sale</div>
+    <div class="form-group">
+      <label class="form-label">Product *</label>
+      <input type="text" class="form-control" id="s-product" placeholder="Start typing product name…" list="product-datalist" autocomplete="off" oninput="onProductInput()">
+      <datalist id="product-datalist"></datalist>
+      <div class="form-hint" id="s-product-hint" style="color:var(--muted)"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Qty *</label>
+        <input type="number" class="form-control" id="s-qty" value="1" min="1" oninput="updateSalePreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unit Price *</label>
+        <input type="number" class="form-control" id="s-price" placeholder="0" oninput="updateSalePreview()">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cost Price/unit</label>
+        <input type="number" class="form-control" id="s-cost" placeholder="0" oninput="updateSalePreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Discount %</label>
+        <input type="number" class="form-control" id="s-discount" value="0" min="0" max="100" oninput="updateSalePreview()">
+      </div>
+    </div>
+    <div class="form-preview" id="sale-preview" style="display:none">
+      <div class="form-preview-row"><span class="lbl">Subtotal</span><span class="val" id="prev-subtotal">—</span></div>
+      <div class="form-preview-row"><span class="lbl">Gross Profit</span><span class="val profit" id="prev-profit">—</span></div>
+      <div class="form-preview-row"><span class="lbl">Margin</span><span class="val profit" id="prev-margin">—</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Customer Name</label>
+      <input type="text" class="form-control" id="s-customer" placeholder="Walk-in or name" list="customer-datalist" autocomplete="off">
+      <datalist id="customer-datalist"></datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Customer Phone</label>
+      <input type="tel" class="form-control" id="s-phone" placeholder="Optional">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount Paid Now</label>
+        <input type="number" class="form-control" id="s-paid" placeholder="Leave blank = credit" oninput="updateSalePreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select class="form-control" id="s-method">
+          <option>Cash</option><option>Mobile Money</option>
+          <option>Bank Transfer</option><option>Cheque</option><option>Card</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-preview" id="balance-preview" style="display:none">
+      <div class="form-preview-row"><span class="lbl">Balance Due</span><span class="val balance" id="prev-balance">—</span></div>
+      <div class="form-preview-row"><span class="lbl">Status</span><span class="val" id="prev-status">—</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <input type="text" class="form-control" id="s-notes" placeholder="Optional">
+    </div>
+    <button class="btn btn-primary" onclick="submitSale()"><span>💾</span> Save Sale</button>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- ─── RESTOCK / ADD PRODUCT ─────────── -->
+  <div class="modal" id="modal-restock" style="display:none">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏪 Add / Restock Product</div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="rstTab('new',this)">New Product</button>
+      <button class="tab-btn" onclick="rstTab('restock',this)">Restock Existing</button>
+    </div>
+    <div class="tab-panel active" id="rst-panel-new">
+      <div class="form-group"><label class="form-label">Product Name *</label><input type="text" class="form-control" id="rst-name" placeholder="e.g. Maize Flour 2kg" autocomplete="off"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Category</label>
+          <select class="form-control" id="rst-category">
+            <option>Food &amp; Beverages</option><option>Household</option><option>Hardware</option>
+            <option>Clothing</option><option>Beauty &amp; Personal Care</option><option>Stationery</option>
+            <option>Medicine</option><option>Services</option><option>Electronics</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Unit</label>
+          <select class="form-control" id="rst-unit">
+            <option>pcs</option><option>kg</option><option>g</option><option>litres</option>
+            <option>ml</option><option>boxes</option><option>packets</option>
+            <option>metres</option><option>pairs</option><option>sessions</option><option>dozen</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cost Price *</label><input type="number" class="form-control" id="rst-cost" placeholder="0" oninput="updateRestockPreview()"></div>
+        <div class="form-group"><label class="form-label">Selling Price *</label><input type="number" class="form-control" id="rst-sell" placeholder="0" oninput="updateRestockPreview()"></div>
+      </div>
+      <div class="form-preview" id="restock-preview" style="display:none">
+        <div class="form-preview-row"><span class="lbl">Profit per unit</span><span class="val profit" id="rst-prev-profit">—</span></div>
+        <div class="form-preview-row"><span class="lbl">Margin</span><span class="val profit" id="rst-prev-margin">—</span></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Opening Stock *</label><input type="number" class="form-control" id="rst-qty" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Reorder Level</label><input type="number" class="form-control" id="rst-reorder" value="5"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Supplier ID</label><input type="text" class="form-control" id="rst-supplier" placeholder="e.g. SUP-0001"></div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-control" id="rst-notes" placeholder="Optional"></div>
+      <button class="btn btn-primary" onclick="submitProduct()"><span>💾</span> Add Product</button>
+    </div>
+    <div class="tab-panel" id="rst-panel-restock">
+      <div class="form-group"><label class="form-label">Select Product *</label>
+        <select class="form-control" id="rst-existing" onchange="fillRestockInfo()">
+          <option value="">— choose product —</option>
+        </select>
+      </div>
+      <div id="rst-existing-info" style="display:none">
+        <div class="alert alert-info" id="rst-stock-info"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">New Cost Price</label><input type="number" class="form-control" id="rst-new-cost" placeholder="Leave blank = keep current"></div>
+          <div class="form-group"><label class="form-label">New Sell Price</label><input type="number" class="form-control" id="rst-new-sell" placeholder="Leave blank = keep current"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Qty to Add *</label><input type="number" class="form-control" id="rst-add-qty" placeholder="0" min="1"></div>
+        <button class="btn btn-primary" onclick="submitRestock()"><span>➕</span> Add Stock</button>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- ─── EXPENSE ────────────────────────── -->
+  <div class="modal" id="modal-expense" style="display:none">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💸 Record Expense</div>
+    <div class="form-group"><label class="form-label">Category *</label>
+      <select class="form-control" id="e-category">
+        <option>Rent</option><option>Salaries &amp; Wages</option><option>Stock Purchase</option>
+        <option>Utilities</option><option>Transport</option><option>Marketing</option>
+        <option>Equipment &amp; Repairs</option><option>Licenses &amp; Permits</option>
+        <option>Packaging</option><option>Bank Charges</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Description *</label><input type="text" class="form-control" id="e-desc" placeholder="What was this expense for?"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount *</label><input type="number" class="form-control" id="e-amount" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Paid Via</label>
+        <select class="form-control" id="e-method">
+          <option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option><option>Cheque</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Supplier ID</label><input type="text" class="form-control" id="e-supplier" placeholder="Optional"></div>
+      <div class="form-group"><label class="form-label">Receipt / Ref No</label><input type="text" class="form-control" id="e-receipt" placeholder="Optional"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-control" id="e-notes" placeholder="Optional"></div>
+    <button class="btn btn-primary" onclick="submitExpense()"><span>💾</span> Save Expense</button>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- ─── SUPPLIER ───────────────────────── -->
+  <div class="modal" id="modal-supplier" style="display:none">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏭 Add Supplier</div>
+    <div class="form-group"><label class="form-label">Supplier Name *</label><input type="text" class="form-control" id="sup-name" placeholder="Business or person name"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Contact Person</label><input type="text" class="form-control" id="sup-contact" placeholder="Name"></div>
+      <div class="form-group"><label class="form-label">Phone *</label><input type="tel" class="form-control" id="sup-phone" placeholder="Phone"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Products Supplied</label><input type="text" class="form-control" id="sup-products" placeholder="e.g. Sugar, Flour, Cement"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Balance You Owe</label><input type="number" class="form-control" id="sup-debt" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Payment Due Date</label><input type="date" class="form-control" id="sup-due"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes / Credit Terms</label><input type="text" class="form-control" id="sup-notes" placeholder="Optional"></div>
+    <button class="btn btn-primary" onclick="submitSupplier()"><span>💾</span> Save Supplier</button>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- ─── RETURN ─────────────────────────── -->
+  <div class="modal" id="modal-return" style="display:none">
+    <div class="modal-handle"></div>
+    <div class="modal-title">↩️ Process Return</div>
+    <div class="form-group"><label class="form-label">Original Sale ID *</label><input type="text" class="form-control" id="ret-saleid" placeholder="e.g. SL-0001"></div>
+    <div class="form-group"><label class="form-label">Product Returned *</label><input type="text" class="form-control" id="ret-product" placeholder="Product name"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Qty Returned *</label><input type="number" class="form-control" id="ret-qty" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Refund Amount *</label><input type="number" class="form-control" id="ret-refund" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Return Type</label>
+        <select class="form-control" id="ret-type"><option>Full Refund</option><option>Exchange</option><option>Store Credit</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Restock Item?</label>
+        <select class="form-control" id="ret-restock"><option>YES</option><option>NO</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Reason</label><input type="text" class="form-control" id="ret-reason" placeholder="Why is the customer returning?"></div>
+    <button class="btn btn-primary" onclick="submitReturn()"><span>💾</span> Process Return</button>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- ─── SALE DETAIL ────────────────────── -->
+  <div class="modal" id="modal-sale-detail" style="display:none">
+    <div class="modal-handle"></div>
+    <div id="sale-detail-content"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1" onclick="markSalePaid()">✅ Mark Paid</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="printInvoice()">🧾 Invoice</button>
+    </div>
+    <button class="btn btn-ghost btn-block mt-8" style="color:var(--danger)" onclick="openModal('modal-return');document.getElementById('ret-saleid').value=currentSaleId">↩️ Process Return</button>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Close</button>
+  </div>
+
+  <!-- ─── BACKUP ─────────────────────────── -->
+  <div class="modal" id="modal-backup" style="display:none">
+    <div class="modal-handle"></div>
+    <div class="modal-title">☁️ Backup &amp; Restore</div>
+    <div class="alert alert-info">Your data is stored in an on-device SQLite database. JSON export lets you restore on any device.</div>
+    <div class="form-group mt-12">
+      <label class="form-label">Export as JSON file</label>
+      <button class="btn btn-primary" onclick="exportJSON()"><span>⬇️</span> Download Backup</button>
+    </div>
+    <div class="divider"></div>
+    <div class="form-group">
+      <label class="form-label">Restore from JSON file</label>
+      <p class="form-hint" style="margin-bottom:8px">This will REPLACE all current data with the backup.</p>
+      <button class="btn btn-ghost btn-block" onclick="document.getElementById('import-file').click()"><span>⬆️</span> Import Backup File</button>
+    </div>
+    <button class="btn btn-ghost btn-block mt-8" onclick="closeModal()">Close</button>
+  </div>
+
+  <!-- ─── INVOICE PRINT ──────────────────── -->
+  <div class="modal" id="modal-invoice" style="display:none">
+    <div class="modal-handle"></div>
+    <div id="invoice-content"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+</div><!-- /modal-overlay -->
+
+<!-- NOTE: Capacitor's JS bridge is injected automatically by the native
+     Android layer — no manual script tag required. window.Capacitor and
+     window.Capacitor.Plugins.CapacitorSQLite become available before
+     DOMContentLoaded fires. -->
+
+<!-- Database layer MUST load before app logic -->
+<script src="db.js"></script>
+<!-- App logic -->
+<script src="main.js"></script>
+</body>
+</html>
