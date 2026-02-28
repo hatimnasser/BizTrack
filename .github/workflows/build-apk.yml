@@ -68,26 +68,48 @@ jobs:
       - name: Write android/local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-      # ── 7. Sync web assets + plugin native code into Android ──
+      # ── 7. Write android/gradle.properties ───────────────────
+      #    FIX FOR EXIT CODE 249 (OOM kill):
+      #    Gradle reads memory config from gradle.properties BEFORE
+      #    it reads environment variables, so GRADLE_OPTS alone is
+      #    not reliable on CI. We must write the file explicitly.
+      #
+      #    android/ is generated above so this file doesn't exist
+      #    in the repo — we create it here every build.
+      #
+      #    -Xmx1536m  = 1.5 GB heap (safe on 7 GB GitHub runner;
+      #                 leaves room for AAPT2, D8, the node process)
+      #    -XX:+HeapDumpOnOutOfMemoryError  = better crash messages
+      #    parallel=false + workers=1  = sequential tasks, lower peak RAM
+      #    configureondemand=false      = evaluate all projects upfront
+      #    caching=false                = no local build cache (CI)
+      - name: Write android/gradle.properties
+        run: |
+          cat >> android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+          org.gradle.daemon=false
+          org.gradle.parallel=false
+          org.gradle.workers.max=1
+          org.gradle.configureondemand=false
+          org.gradle.caching=false
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
+      # ── 8. Sync web assets + plugin native code into Android ──
       #    Copies www/ → android/app/src/main/assets/public/
       #    and links @capacitor-community/sqlite native code.
       - name: Capacitor sync
         run: npx cap sync android --no-telemetry
 
-      # ── 8. Ensure Gradle wrapper is executable ────────────────
+      # ── 9. Ensure Gradle wrapper is executable ────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 9. Cache Gradle's downloaded dependencies ─────────────
-      #    FIX: android/ is generated during this build, so we
-      #    CANNOT use hashFiles('android/**/*.gradle*') — those
-      #    files aren't in the repo at checkout and hashFiles()
-      #    is evaluated early, returning empty → fatal error.
-      #
-      #    Instead we key off package.json (which controls which
-      #    version of @capacitor/android and the SQLite plugin we
-      #    install, and therefore which Gradle files get generated).
-      #    continue-on-error means a cache miss never breaks the build.
+      # ── 10. Cache Gradle's downloaded dependencies ────────────
+      #    Keyed on package.json — android/ files don't exist at
+      #    checkout so we cannot use hashFiles('android/...').
+      #    continue-on-error: a cache miss never breaks the build.
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         continue-on-error: true
@@ -99,32 +121,25 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      # ── 10. Build the debug APK ───────────────────────────────
-      #    --no-daemon  prevents background Gradle processes
-      #    (important on CI where memory is limited).
-      #    assembleDebug produces a directly-installable APK.
+      # ── 11. Build the debug APK ───────────────────────────────
+      #    --no-daemon + gradle.properties daemon=false = certain
+      #    no background JVM is left running on the runner.
+      #    --stacktrace kept for useful error messages;
+      #    --info removed (generates 100k+ lines, slows CI).
       - name: Build debug APK
         working-directory: android
-        run: >
-          ./gradlew assembleDebug
-          --no-daemon
-          --stacktrace
-          --info
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
-          GRADLE_OPTS: >-
-            -Dorg.gradle.daemon=false
-            -Dorg.gradle.workers.max=2
-            -Dorg.gradle.jvmargs=-Xmx2g
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
-      # ── 11. Rename APK with version & date for clarity ────────
+      # ── 12. Rename APK with version & date for clarity ────────
       - name: Rename APK
         run: |
           DATE=$(date +%Y%m%d)
           cp android/app/build/outputs/apk/debug/app-debug.apk \
              "BizTrack-Pro-v3.1-debug-${DATE}.apk"
 
-      # ── 12. Upload APK as a downloadable artifact ─────────────
+      # ── 13. Upload APK as a downloadable artifact ─────────────
       #    Go to  Actions → (this run) → Artifacts  to download.
       #    The zip will contain the APK file inside.
       - name: Upload APK artifact
@@ -134,7 +149,7 @@ jobs:
           path: "BizTrack-Pro-v3.1-debug-*.apk"
           retention-days: 30    # artifact kept for 30 days
 
-      # ── 13. Print success summary ─────────────────────────────
+      # ── 14. Print success summary ─────────────────────────────
       - name: Build summary
         if: success()
         run: |
