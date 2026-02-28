@@ -1,0 +1,146 @@
+# ═══════════════════════════════════════════════════════════════
+#  BizTrack Pro — GitHub Actions APK Builder
+#
+#  HOW TO USE:
+#  1. Paste all project files into your GitHub repo (see README).
+#  2. Go to  Actions → "Build BizTrack APK"  and click
+#     "Run workflow" (or just push a commit to main).
+#  3. When the green ✓ appears, click the run → scroll to
+#     "Artifacts" → download  BizTrack-Pro-APK.zip
+#  4. Unzip it — inside is  app-debug.apk.
+#  5. Copy the APK to your Android phone and install it
+#     (enable "Install from unknown sources" once).
+#
+#  Build time: ~8–12 minutes on first run (Gradle cache cold).
+#              ~4–6 minutes on subsequent runs (cache warm).
+# ═══════════════════════════════════════════════════════════════
+
+name: Build BizTrack APK
+
+# ── Triggers ────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ main, master ]   # auto-build on every push
+  workflow_dispatch:             # manual "Run workflow" button
+
+# ── Build job ───────────────────────────────────────────────────
+jobs:
+  build:
+    name: Assemble Debug APK
+    runs-on: ubuntu-latest       # GitHub's free Linux runner
+
+    steps:
+
+      # ── 1. Get source code ────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Java 17 (required by Android Gradle Plugin 8+) ────
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle           # caches ~/.gradle between runs
+
+      # ── 3. Node.js 20 (Capacitor CLI requires ≥ 18) ──────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm              # caches node_modules between runs
+
+      # ── 4. Install npm packages ───────────────────────────────
+      #    Uses install (not ci) because there is no lock file yet.
+      #    After the first build you can commit package-lock.json
+      #    and switch to `npm ci` for reproducible installs.
+      - name: Install npm dependencies
+        run: npm install
+
+      # ── 5. Add the Android platform ───────────────────────────
+      #    Generates the android/ folder from @capacitor/android.
+      #    The --no-telemetry flag suppresses analytics prompts.
+      - name: Add Capacitor Android platform
+        run: npx cap add android --no-telemetry
+
+      # ── 6. Tell Gradle where the Android SDK lives ────────────
+      #    GitHub's ubuntu-latest runner pre-installs Android SDK
+      #    at $ANDROID_HOME. Gradle needs this in local.properties.
+      - name: Write android/local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      # ── 7. Sync web assets + plugin native code into Android ──
+      #    Copies www/ → android/app/src/main/assets/public/
+      #    and links @capacitor-community/sqlite native code.
+      - name: Capacitor sync
+        run: npx cap sync android --no-telemetry
+
+      # ── 8. Ensure Gradle wrapper is executable ────────────────
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      # ── 9. Cache Gradle's downloaded dependencies ─────────────
+      #    Saves ~200 MB of Android SDK / Gradle artefacts so
+      #    subsequent runs skip the long download step.
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # ── 10. Build the debug APK ───────────────────────────────
+      #    --no-daemon  prevents background Gradle processes
+      #    (important on CI where memory is limited).
+      #    assembleDebug produces a directly-installable APK.
+      - name: Build debug APK
+        working-directory: android
+        run: >
+          ./gradlew assembleDebug
+          --no-daemon
+          --stacktrace
+          --info
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.daemon=false
+            -Dorg.gradle.workers.max=2
+            -Dorg.gradle.jvmargs=-Xmx2g
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+
+      # ── 11. Rename APK with version & date for clarity ────────
+      - name: Rename APK
+        run: |
+          DATE=$(date +%Y%m%d)
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "BizTrack-Pro-v3.1-debug-${DATE}.apk"
+
+      # ── 12. Upload APK as a downloadable artifact ─────────────
+      #    Go to  Actions → (this run) → Artifacts  to download.
+      #    The zip will contain the APK file inside.
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BizTrack-Pro-APK
+          path: "BizTrack-Pro-v3.1-debug-*.apk"
+          retention-days: 30    # artifact kept for 30 days
+
+      # ── 13. Print success summary ─────────────────────────────
+      - name: Build summary
+        if: success()
+        run: |
+          echo "## ✅ BizTrack Pro APK Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App ID | com.biztrack.pro |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build type | Debug |" >> $GITHUB_STEP_SUMMARY
+          echo "| Built at | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⬇️ **Download**: Click the \`BizTrack-Pro-APK\` artifact below." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          APK_SIZE=$(du -sh android/app/build/outputs/apk/debug/app-debug.apk | cut -f1)
+          echo "APK size: **${APK_SIZE}**" >> $GITHUB_STEP_SUMMARY
